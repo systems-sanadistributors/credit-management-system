@@ -78,15 +78,6 @@ salesRecordSchema.index(
   }
 );
 
-salesRecordSchema.index(
-  { customerId: 1, period: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      customerId: { $type: 'string', $gt: '' },
-      period: { $type: 'string', $gt: '' },
-    },
-  }
-);
+salesRecordSchema.index({ customerId: 1, period: 1 });
 
 module.exports = mongoose.model('SalesRecord', salesRecordSchema);

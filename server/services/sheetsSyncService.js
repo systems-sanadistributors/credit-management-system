@@ -1,9 +1,13 @@
 const { google } = require('googleapis');
+const XLSX = require('xlsx');
 const Customer = require('../models/Customer');
 const SalesRecord = require('../models/SalesRecord');
 const { config, validateGoogleSheetsConfig } = require('../config/env');
 
 const BULK_CHUNK_SIZE = 1000;
+const GOOGLE_SHEET_MIME = 'application/vnd.google-apps.spreadsheet';
+const EXCEL_XLSX_MIME =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const READONLY_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets.readonly',
   'https://www.googleapis.com/auth/drive.readonly',
@@ -97,6 +101,10 @@ const SALES_HEADER_MAP = {
   invoiceamount: 'amount',
   grandtotal: 'amount',
   totalvalue: 'amount',
+  totalvalues: 'amount',
+  valuewithoutsalestax: 'valueWithoutTax',
+  salestaxapplicable: 'salesTaxApplicable',
+  retailprice: 'retailPrice',
   sales: 'amount',
   salesamount: 'amount',
   netsales: 'amount',
@@ -390,7 +398,16 @@ async function upsertSalesRows(rawRows) {
     const m = mapObjectRow(rawRow, SALES_HEADER_MAP);
     const invoiceId = sanitizeCell(m.invoiceId);
     const customerId = sanitizeCell(m.customerId);
-    const parsedAmount = parseAmount(m.amount);
+    const primaryAmount = parseAmount(m.amount);
+    const fallbackExclTax = parseAmount(m.valueWithoutTax);
+    const fallbackRetail = parseAmount(m.retailPrice);
+    const parsedAmount = Number.isFinite(primaryAmount)
+      ? primaryAmount
+      : Number.isFinite(fallbackExclTax)
+        ? fallbackExclTax
+        : Number.isFinite(fallbackRetail)
+          ? fallbackRetail
+          : NaN;
     const parsedQty = parseAmount(m.quantity);
 
     if (invoiceId) {
@@ -510,8 +527,8 @@ async function listSpreadsheetsInFolder(drive, folderId) {
 
   do {
     const res = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
-      fields: 'nextPageToken, files(id, name)',
+      q: `'${folderId}' in parents and (mimeType = '${GOOGLE_SHEET_MIME}' or mimeType = '${EXCEL_XLSX_MIME}') and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType)',
       pageSize: 1000,
       pageToken,
       supportsAllDrives: true,
@@ -524,6 +541,24 @@ async function listSpreadsheetsInFolder(drive, folderId) {
   } while (pageToken);
 
   return files;
+}
+
+async function readExcelFileToMatrix(drive, fileId) {
+  const res = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' }
+  );
+  const workbook = XLSX.read(Buffer.from(res.data), {
+    type: 'buffer',
+    cellDates: true,
+  });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+  return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+    header: 1,
+    defval: '',
+    raw: false,
+  });
 }
 
 async function syncFromGoogleSheets(sheetsConfigOverride) {
@@ -542,77 +577,98 @@ async function syncFromGoogleSheets(sheetsConfigOverride) {
   const sheets = getSheetsApiClient(sheetsConfig);
   const sources = new Map();
 
-  if (sheetsConfig.driveFolderId) {
-    const drive = getDriveApiClient(sheetsConfig);
-    const folderFiles = await listSpreadsheetsInFolder(
-      drive,
-      sheetsConfig.driveFolderId
-    );
-    for (const file of folderFiles) {
-      if (file?.id) {
-        sources.set(file.id, { spreadsheetId: file.id, range: '', fallbackType: null });
+  try {
+    const drive = sheetsConfig.driveFolderId ? getDriveApiClient(sheetsConfig) : null;
+
+    if (drive && sheetsConfig.driveFolderId) {
+      const folderFiles = await listSpreadsheetsInFolder(
+        drive,
+        sheetsConfig.driveFolderId
+      );
+      for (const file of folderFiles) {
+        if (file?.id) {
+          sources.set(file.id, {
+            spreadsheetId: file.id,
+            mimeType: file.mimeType || GOOGLE_SHEET_MIME,
+            range: '',
+            fallbackType: null,
+          });
+        }
       }
     }
-  }
 
-  if (sheetsConfig.customerSheetId && !sources.has(sheetsConfig.customerSheetId)) {
-    sources.set(sheetsConfig.customerSheetId, {
-      spreadsheetId: sheetsConfig.customerSheetId,
-      range: sheetsConfig.customerSheetRange || '',
-      fallbackType: 'customer',
-    });
-  }
-
-  if (sheetsConfig.salesSheetId && !sources.has(sheetsConfig.salesSheetId)) {
-    sources.set(sheetsConfig.salesSheetId, {
-      spreadsheetId: sheetsConfig.salesSheetId,
-      range: sheetsConfig.salesSheetRange || '',
-      fallbackType: 'sales',
-    });
-  }
-
-  const customerBatches = [];
-  const salesBatches = [];
-
-  for (const src of sources.values()) {
-    const tabName = await resolveSheetTabName(sheets, src.spreadsheetId, src.range);
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: src.spreadsheetId,
-      range: tabName,
-    });
-    const matrix = res?.data?.values || [];
-    if (matrix.length < 2) continue;
-
-    const detectedType = detectSheetType(matrix[0]) || src.fallbackType;
-    const objects = rowsMatrixToObjects(matrix);
-    if (detectedType === 'customer') {
-      customerBatches.push(objects);
-    } else if (detectedType === 'sales') {
-      salesBatches.push(objects);
+    if (sheetsConfig.customerSheetId && !sources.has(sheetsConfig.customerSheetId)) {
+      sources.set(sheetsConfig.customerSheetId, {
+        spreadsheetId: sheetsConfig.customerSheetId,
+        mimeType: GOOGLE_SHEET_MIME,
+        range: sheetsConfig.customerSheetRange || '',
+        fallbackType: 'customer',
+      });
     }
+
+    if (sheetsConfig.salesSheetId && !sources.has(sheetsConfig.salesSheetId)) {
+      sources.set(sheetsConfig.salesSheetId, {
+        spreadsheetId: sheetsConfig.salesSheetId,
+        mimeType: GOOGLE_SHEET_MIME,
+        range: sheetsConfig.salesSheetRange || '',
+        fallbackType: 'sales',
+      });
+    }
+
+    const customerBatches = [];
+    const salesBatches = [];
+
+    for (const src of sources.values()) {
+      let matrix = [];
+      if (src.mimeType === EXCEL_XLSX_MIME && drive) {
+        matrix = await readExcelFileToMatrix(drive, src.spreadsheetId);
+      } else {
+        const tabName = await resolveSheetTabName(sheets, src.spreadsheetId, src.range);
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: src.spreadsheetId,
+          range: tabName,
+        });
+        matrix = res?.data?.values || [];
+      }
+      if (matrix.length < 2) continue;
+
+      const detectedType = detectSheetType(matrix[0]) || src.fallbackType;
+      const objects = rowsMatrixToObjects(matrix);
+      if (detectedType === 'customer') {
+        customerBatches.push(objects);
+      } else if (detectedType === 'sales') {
+        salesBatches.push(objects);
+      }
+    }
+
+    let customersSynced = 0;
+    let salesRecordsSynced = 0;
+    let skippedRows = 0;
+
+    for (const batch of customerBatches) {
+      const res = await upsertCustomerRows(batch);
+      customersSynced += res.synced;
+      skippedRows += res.skipped;
+    }
+
+    for (const batch of salesBatches) {
+      const res = await upsertSalesRows(batch);
+      salesRecordsSynced += res.synced;
+      skippedRows += res.skipped;
+    }
+
+    return {
+      customersSynced,
+      salesRecordsSynced,
+      skippedRows,
+    };
+  } catch (err) {
+    if (err.statusCode) throw err;
+    const googleDetail = err?.response?.data?.error_description || err.message;
+    const wrapped = new Error(`Google Sheets/Drive sync error: ${googleDetail}`);
+    wrapped.statusCode = 502;
+    throw wrapped;
   }
-
-  let customersSynced = 0;
-  let salesRecordsSynced = 0;
-  let skippedRows = 0;
-
-  for (const batch of customerBatches) {
-    const res = await upsertCustomerRows(batch);
-    customersSynced += res.synced;
-    skippedRows += res.skipped;
-  }
-
-  for (const batch of salesBatches) {
-    const res = await upsertSalesRows(batch);
-    salesRecordsSynced += res.synced;
-    skippedRows += res.skipped;
-  }
-
-  return {
-    customersSynced,
-    salesRecordsSynced,
-    skippedRows,
-  };
 }
 
 module.exports = {
