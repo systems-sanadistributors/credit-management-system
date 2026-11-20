@@ -37,7 +37,17 @@ const GOOGLE_SHEETS_SYNC_KEYS = [
 
 function normalizePrivateKey(rawKey) {
   if (!rawKey) return '';
-  return String(rawKey).replace(/\\n/g, '\n');
+  let key = String(rawKey).trim();
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1).trim();
+  }
+  return key
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n');
 }
 
 function validateEnv(envSource = process.env) {
