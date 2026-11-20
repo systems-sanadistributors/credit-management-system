@@ -1,12 +1,72 @@
 const sheetsSyncService = require('../services/sheetsSyncService');
 
-async function triggerFullSync(_req, res, next) {
+let syncState = {
+  status: 'idle',
+  startedAt: null,
+  completedAt: null,
+  result: null,
+  error: null,
+};
+
+function startBackgroundSync() {
+  if (syncState.status === 'running') {
+    return syncState;
+  }
+
+  syncState = {
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    result: null,
+    error: null,
+  };
+
+  sheetsSyncService
+    .syncFromGoogleSheets()
+    .then((result) => {
+      syncState = {
+        ...syncState,
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        result,
+        error: null,
+      };
+    })
+    .catch((err) => {
+      console.error('[SHEETS] Background sync failed:', err.message);
+      syncState = {
+        ...syncState,
+        status: 'failed',
+        completedAt: new Date().toISOString(),
+        result: null,
+        error: err.message || 'Google Sheets sync failed',
+      };
+    });
+
+  return syncState;
+}
+
+async function triggerFullSync(req, res, next) {
+  const isAsync =
+    req.query?.async === '1' ||
+    req.query?.async === 'true' ||
+    req.body?.async === true;
+
+  if (isAsync) {
+    const state = startBackgroundSync();
+    return res.status(202).json(state);
+  }
+
   try {
     const result = await sheetsSyncService.syncFromGoogleSheets();
     return res.status(200).json(result);
   } catch (err) {
     return next(err);
   }
+}
+
+function getSyncStatus(_req, res) {
+  return res.status(200).json(syncState);
 }
 
 async function handleWebhook(req, res, next) {
@@ -36,4 +96,4 @@ async function handleWebhook(req, res, next) {
   }
 }
 
-module.exports = { triggerFullSync, handleWebhook };
+module.exports = { triggerFullSync, getSyncStatus, handleWebhook };

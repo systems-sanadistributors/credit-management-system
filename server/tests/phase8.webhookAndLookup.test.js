@@ -126,6 +126,29 @@ describe('Phase 2 (Sheets API): Webhook Security, Manual Sync RBAC & Customer Lo
     assert.equal(p1Res.status, 200);
     assert.equal(p1Res.body.customersSynced, 1);
     assert.equal(p1Res.body.salesRecordsSynced, 1);
+
+    // Async mode returns 202 immediately and completes in background
+    const asyncRes = await request(app)
+      .post('/api/sheets/sync?async=1')
+      .set('Cookie', cookieForRole(1));
+    assert.equal(asyncRes.status, 202);
+    assert.equal(asyncRes.body.status, 'running');
+
+    let statusBody = null;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      const statusRes = await request(app)
+        .get('/api/sheets/sync/status')
+        .set('Cookie', cookieForRole(1));
+      assert.equal(statusRes.status, 200);
+      statusBody = statusRes.body;
+      if (statusBody.status === 'completed' || statusBody.status === 'failed') {
+        break;
+      }
+    }
+    assert.equal(statusBody.status, 'completed');
+    assert.equal(statusBody.result.customersSynced, 1);
+    assert.equal(statusBody.result.salesRecordsSynced, 1);
   });
 
   it('upserts both customer and sales rows via webhook and returns chronologically sorted history on lookup', async () => {
