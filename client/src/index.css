@@ -515,10 +515,17 @@ html[data-theme="dark"] .ledger-theme-thumb {
 
 .ledger-index {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
   border: 0;
   background-color: transparent;
+}
+
+@media (min-width: 480px) {
+  .ledger-index {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
 }
 
 .ledger-index > button {
@@ -735,10 +742,6 @@ html[data-theme="dark"] .ledger-route-cell--passed {
 }
 
 @media (max-width: 640px) {
-  .ledger-index {
-    gap: 0.5rem;
-  }
-
   .ledger-index > button {
     padding: 0.55rem 0.4rem 0.6rem;
   }

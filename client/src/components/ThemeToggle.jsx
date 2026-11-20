@@ -12,7 +12,7 @@ export function ThemeToggle() {
       aria-pressed={isDark}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="ledger-theme-toggle"
+      className="ledger-theme-toggle w-full sm:w-auto justify-center"
     >
       <span className="ledger-theme-track" aria-hidden="true">
         <span className="ledger-theme-thumb" />

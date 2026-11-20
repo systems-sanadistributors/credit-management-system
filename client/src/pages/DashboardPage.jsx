@@ -138,17 +138,17 @@ export function DashboardPage() {
         syncingSheets={syncingSheets}
       />
 
-      <main className="flex-1 w-full max-w-350 mx-auto px-5 sm:px-8 pb-14">
-        <section className="ui-hero ledger-reveal pt-9 sm:pt-12 pb-7 flex items-end justify-between gap-5">
-          <div>
-            <p className="font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <main className="flex-1 w-full max-w-350 mx-auto px-4 sm:px-8 pb-14">
+        <section className="ui-hero ledger-reveal pt-7 sm:pt-12 pb-6 sm:pb-7 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
+          <div className="min-w-0">
+            <p className="font-mono-tabular text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em] text-zinc-500">
               Sana Distributors / Approval Credit Management System
             </p>
-            <h1 className="mt-2 font-display text-[42px] sm:text-[58px] font-bold leading-[0.88] tracking-[-0.055em]">
+            <h1 className="mt-2 font-display text-[32px] sm:text-[42px] lg:text-[58px] font-bold leading-[0.95] sm:leading-[0.88] tracking-[-0.05em] sm:tracking-[-0.055em] max-w-full">
               Credit Management System<span className="text-zinc-400">.</span>
             </h1>
           </div>
-          <p className="font-mono-tabular text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 text-right shrink-0 leading-relaxed">
+          <p className="font-mono-tabular text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 text-left sm:text-right shrink-0 leading-relaxed">
             P{role}
             <br />
             <span className="text-zinc-950">
@@ -171,7 +171,7 @@ export function DashboardPage() {
         {syncBanner && (
           <div
             role={syncBanner.type === 'error' ? 'alert' : 'status'}
-            className={`mb-3 border px-4 py-3 text-xs font-medium flex items-center justify-between gap-4 ${
+            className={`mb-3 border px-4 py-3 text-xs font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
               syncBanner.type === 'error'
                 ? 'border-rose-500 bg-rose-50 text-rose-900'
                 : 'border-emerald-500 bg-emerald-50 text-emerald-900'
