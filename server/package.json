@@ -1,0 +1,32 @@
+{
+  "name": "sana-approval-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed.js",
+    "test:phase1": "node --test tests/phase1.auth.test.js",
+    "test:phase2": "node --test tests/phase2.forms.test.js",
+    "test:e2e": "node --test tests/phase4.e2e.test.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1172.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "googleapis": "^190.0.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "supertest": "^7.0.0"
+  }
+}
