@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { API_BASE } from '../api/client.js';
 import {
   fetchFormsThunk,
   upsertFormFromStream,
@@ -26,7 +27,7 @@ export function useForms() {
     const connectStream = () => {
       if (disposed) return;
 
-      source = new EventSource('/api/forms/stream', {
+      source = new EventSource(`${API_BASE}/forms/stream`, {
         withCredentials: true,
       });
 
