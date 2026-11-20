@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const { config } = require('../config/env');
 
 let customTransporter = null;
+let defaultTransporter = null;
 
 function setTransporter(transporter) {
   customTransporter = transporter;
@@ -9,20 +10,18 @@ function setTransporter(transporter) {
 
 function getTransporter() {
   if (customTransporter) return customTransporter;
-
-  if (process.env.NODE_ENV === 'test') {
-    return nodemailer.createTransport({ jsonTransport: true });
+  if (!defaultTransporter) {
+    defaultTransporter = nodemailer.createTransport({
+      host: config.smtp.host,
+      port: config.smtp.port,
+      secure: config.smtp.port === 465,
+      auth: {
+        user: config.smtp.user,
+        pass: config.smtp.pass,
+      },
+    });
   }
-
-  return nodemailer.createTransport({
-    host: config.smtp.host,
-    port: config.smtp.port,
-    secure: config.smtp.port === 465,
-    auth: {
-      user: config.smtp.user,
-      pass: config.smtp.pass,
-    },
-  });
+  return defaultTransporter;
 }
 
 function escapeHtml(value) {
@@ -59,7 +58,7 @@ function buildEmailHtml({ heading, details, commentLabel, commentText, actionUrl
   return `
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;border:2px solid #09090b;background:#ffffff;">
       <div style="background:#09090b;color:#ffffff;padding:14px 20px;font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">
-        Sana Distributors — Sequential Credit Management System
+        Sana Distribution — Sequential Approval Ledger
       </div>
       <div style="padding:20px;">
         <h2 style="margin:0 0 14px 0;font-size:18px;color:#09090b;">${escapeHtml(heading)}</h2>
@@ -84,23 +83,31 @@ async function sendMailSafe({ to, subject, text, html }) {
   const recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
   if (recipients.length === 0) return null;
 
-  const transporter = getTransporter();
+  const cleanSubject = sanitizeSubject(subject);
+  const fromHeader = config.smtp.from || `"Sana Distribution" <${config.smtp.user}>`;
+  const toHeader = recipients.join(', ');
+
+  if (!customTransporter && process.env.NODE_ENV === 'test') {
+    return { messageId: 'test-mock-smtp-id', to: toHeader };
+  }
+
   try {
+    const transporter = getTransporter();
     const info = await transporter.sendMail({
-      from: `"Sana Distributors" <${config.smtp.user}>`,
-      to: recipients.join(', '),
-      subject: sanitizeSubject(subject),
+      from: fromHeader,
+      to: toHeader,
+      subject: cleanSubject,
       text,
       html,
     });
-    if (process.env.NODE_ENV !== 'test') {
+    if (!customTransporter) {
       console.log(
-        `[EMAIL] From ${config.smtp.user} -> ${recipients.join(', ')} | accepted: ${JSON.stringify(info.accepted)} | rejected: ${JSON.stringify(info.rejected)} | id: ${info.messageId}`
+        `[EMAIL] Sent via SMTP (${config.smtp.user} -> ${toHeader}) | id: ${info.messageId}`
       );
     }
     return info;
   } catch (err) {
-    console.error(`[EMAIL] Delivery failed (${recipients.join(', ')}):`, err.message);
+    console.error(`[EMAIL] SMTP delivery failed (${toHeader}):`, err.message);
     return null;
   }
 }
@@ -109,10 +116,10 @@ async function verifySmtp() {
   if (process.env.NODE_ENV === 'test') return true;
   try {
     await getTransporter().verify();
-    console.log(`[SMTP] Ready (${config.smtp.user} via ${config.smtp.host})`);
+    console.log(`[SMTP] Ready (${config.smtp.host}:${config.smtp.port})`);
     return true;
   } catch (err) {
-    console.error(`[SMTP] Verification failed (${config.smtp.host}):`, err.message);
+    console.error('[SMTP] Verification failed:', err.message);
     return false;
   }
 }
@@ -213,7 +220,6 @@ async function notifyOnFormReviewed(form, { actorRole, action, comment }) {
   const actionUrl = config.clientUrl;
   const decisionLabel = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
 
-  // Person 2 -> Person 3, Person 3 -> Person 4, Person 4 -> Person 1
   const nextRecipientRole = actorRole === 4 ? 1 : actorRole + 1;
   const recipientEmail = config.emails[nextRecipientRole];
 
@@ -260,7 +266,7 @@ async function notifyPerson5Credit(form) {
     ['B. name', form.bName],
     ['Channel', form.channel],
     ['CNIC #', form.cnicNo],
-    ['NTN #', form.ntnNo || '—'],
+    ['NTN #', form.ntnNo],
     ['Mobile #', form.mobileNo],
     ['Address', form.address],
     ['Days', form.days],

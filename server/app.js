@@ -13,13 +13,20 @@ const customerRoutes = require('./routes/customerRoutes');
 
 function createApp() {
   const app = express();
+  app.set('trust proxy', 1);
+
+  const allowedOrigins = String(config.clientUrl || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter((origin) => origin && origin !== '*');
 
   app.use(helmet());
   app.use(
     cors({
-      origin: config.clientUrl,
+      origin: allowedOrigins.length <= 1 ? allowedOrigins[0] : allowedOrigins,
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   );
 

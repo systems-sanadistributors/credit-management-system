@@ -3,13 +3,19 @@ const { config } = require('../config/env');
 const { matchPasskeyToRole, generateRoleToken } = require('../services/authService');
 
 const isHttpsClient = config.clientUrl.startsWith('https://');
+const useCrossSiteCookies =
+  process.env.NODE_ENV === 'production' || isHttpsClient;
+
+const COOKIE_BASE_OPTIONS = {
+  httpOnly: true,
+  sameSite: useCrossSiteCookies ? 'none' : 'lax',
+  secure: useCrossSiteCookies,
+  path: '/',
+};
 
 const COOKIE_OPTIONS = {
-  httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production' && isHttpsClient,
+  ...COOKIE_BASE_OPTIONS,
   maxAge: 8 * 60 * 60 * 1000,
-  path: '/',
 };
 
 function login(req, res) {
@@ -29,12 +35,7 @@ function login(req, res) {
 }
 
 function logout(_req, res) {
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' && isHttpsClient,
-    path: '/',
-  });
+  res.clearCookie('token', COOKIE_BASE_OPTIONS);
   return res.status(200).json({ message: 'Session terminated' });
 }
 

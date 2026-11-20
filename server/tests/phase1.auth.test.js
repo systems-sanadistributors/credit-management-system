@@ -109,4 +109,30 @@ describe('Phase 1: Backend Setup, Env Validation, Security Middleware & Passkey 
       .send({ passkey: 'wrong' });
     assert.equal(blockedRes.status, 429);
   });
+
+  it('sets HttpOnly, Secure, SameSite=None cookie attributes in production mode', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    delete require.cache[require.resolve('../controllers/authController')];
+    const prodAuthController = require('../controllers/authController');
+
+    try {
+      const prodApp = express();
+      prodApp.use(express.json());
+      prodApp.post('/api/auth/login', prodAuthController.login);
+
+      const res = await request(prodApp)
+        .post('/api/auth/login')
+        .send({ passkey: config.passkeys[1] });
+
+      assert.equal(res.status, 200);
+      const setCookie = res.headers['set-cookie']?.[0] || '';
+      assert.match(setCookie, /HttpOnly/i);
+      assert.match(setCookie, /Secure/i);
+      assert.match(setCookie, /SameSite=None/i);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+      delete require.cache[require.resolve('../controllers/authController')];
+    }
+  });
 });
