@@ -6,17 +6,17 @@ const { sanitizeRequest } = require('../middleware/sanitize');
 
 const router = express.Router();
 
-router.get('/', requireAuth, requireRole(1, 2, 3, 4), formController.getForms);
+router.get('/', requireAuth, requireRole(1, 2, 3, 4, 5), formController.getForms);
 router.get(
   '/stream',
   requireAuth,
-  requireRole(1, 2, 3, 4),
+  requireRole(1, 2, 3, 4, 5),
   formController.streamForms
 );
 router.get(
   '/:id',
   requireAuth,
-  requireRole(1, 2, 3, 4),
+  requireRole(1, 2, 3, 4, 5),
   formController.getFormById
 );
 router.post(

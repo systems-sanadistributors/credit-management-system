@@ -167,5 +167,31 @@ describe('Phase 3: Frontend Auth UI, Dashboard Stat Filters & 1-Per-Row Ledger L
     assert.doesNotMatch(p2Html, />Edit</);
     assert.doesNotMatch(p2Html, />Delete</);
     assert.doesNotMatch(p2Html, /indigo|purple|violet|backdrop-blur/i);
+
+    const viewerTopNav = renderToStaticMarkup(
+      React.createElement(TopNav, {
+        role: 5,
+        onLogout: () => {},
+        onNewForm: null,
+        onSyncSheets: null,
+      })
+    );
+    assert.match(viewerTopNav, /Viewer/);
+    assert.doesNotMatch(viewerTopNav, /New Form/);
+    assert.doesNotMatch(viewerTopNav, /Sync Sheets/);
+
+    const viewerHtml = renderToStaticMarkup(
+      React.createElement(FormRowList, {
+        forms: SAMPLE_FORMS,
+        role: 5,
+        onInspectForm: () => {},
+        onEditForm: () => {},
+        onDeleteForm: () => {},
+      })
+    );
+    assert.match(viewerHtml, /Inspect/);
+    assert.doesNotMatch(viewerHtml, /Review Gate/);
+    assert.doesNotMatch(viewerHtml, />Edit</);
+    assert.doesNotMatch(viewerHtml, />Delete</);
   });
 });

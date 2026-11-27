@@ -43,14 +43,56 @@ describe('Phase 2: Structured 12-Field Form CRUD, Conditional Cheque Validation,
     await disconnectDB();
   });
 
-  it('blocks Persons 2, 3, and 4 from creating, editing, or deleting forms (RBAC 403)', async () => {
-    for (const role of [2, 3, 4]) {
+  it('blocks Persons 2, 3, 4, and Viewer (role 5) from mutating forms while allowing Viewer read-only access', async () => {
+    for (const role of [2, 3, 4, 5]) {
       const createRes = await request(app)
         .post('/api/forms')
         .set('Cookie', cookieForRole(role))
         .send(buildValidPayload());
       assert.equal(createRes.status, 403);
     }
+
+    const p1Create = await request(app)
+      .post('/api/forms')
+      .set('Cookie', cookieForRole(1))
+      .send(buildValidPayload());
+    assert.equal(p1Create.status, 201);
+    const id = p1Create.body.form._id;
+
+    const viewerList = await request(app)
+      .get('/api/forms')
+      .set('Cookie', cookieForRole(5));
+    assert.equal(viewerList.status, 200);
+    assert.ok(viewerList.body.forms.some((f) => f._id === id));
+
+    const viewerGet = await request(app)
+      .get(`/api/forms/${id}`)
+      .set('Cookie', cookieForRole(5));
+    assert.equal(viewerGet.status, 200);
+
+    const viewerUpdate = await request(app)
+      .put(`/api/forms/${id}`)
+      .set('Cookie', cookieForRole(5))
+      .send(buildValidPayload());
+    assert.equal(viewerUpdate.status, 403);
+
+    const viewerDelete = await request(app)
+      .delete(`/api/forms/${id}`)
+      .set('Cookie', cookieForRole(5));
+    assert.equal(viewerDelete.status, 403);
+
+    const viewerReview = await request(app)
+      .post(`/api/forms/${id}/review`)
+      .set('Cookie', cookieForRole(5))
+      .send({ action: 'APPROVE', comment: 'Should be forbidden' });
+    assert.equal(viewerReview.status, 403);
+
+    const viewerSendCredit = await request(app)
+      .post(`/api/forms/${id}/send-credit`)
+      .set('Cookie', cookieForRole(5));
+    assert.equal(viewerSendCredit.status, 403);
+
+    await Form.deleteMany({});
   });
 
   it('validates conditional cheque fields when chequeStatus is Y and rejects unsafe image types', async () => {

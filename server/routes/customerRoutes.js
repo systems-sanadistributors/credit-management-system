@@ -7,7 +7,7 @@ const router = express.Router();
 router.get(
   '/:customerId',
   requireAuth,
-  requireRole(1, 2, 3, 4),
+  requireRole(1, 2, 3, 4, 5),
   customerController.getCustomerById
 );
 

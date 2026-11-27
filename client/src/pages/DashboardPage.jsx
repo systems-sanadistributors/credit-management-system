@@ -149,7 +149,7 @@ export function DashboardPage() {
             </h1>
           </div>
           <p className="font-mono-tabular text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 text-left sm:text-right shrink-0 leading-relaxed">
-            P{role}
+            {role === 5 ? 'Viewer' : `P${role}`}
             <br />
             <span className="text-zinc-950">
               {filteredForms.length} / {forms.length}

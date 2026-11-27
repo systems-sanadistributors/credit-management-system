@@ -17,7 +17,9 @@ export function TopNav({
           <span className="font-display font-bold text-[13px] sm:text-[15px] tracking-[-0.02em] truncate">
             Sana Distributors
           </span>
-          <span className="ui-chip hidden sm:inline-flex">P{role}</span>
+          <span className="ui-chip hidden sm:inline-flex">
+            {role === 5 ? 'Viewer' : `P${role}`}
+          </span>
         </div>
 
         <div

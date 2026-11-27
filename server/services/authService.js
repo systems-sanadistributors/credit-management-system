@@ -14,8 +14,10 @@ function matchPasskeyToRole(candidatePasskey, passkeysMap = config.passkeys) {
   const candidateDigest = sha256Buffer(candidatePasskey);
   let matchedRole = null;
 
-  for (const role of [1, 2, 3, 4]) {
-    const targetDigest = sha256Buffer(passkeysMap[role]);
+  for (const role of [1, 2, 3, 4, 5]) {
+    const targetPasskey = passkeysMap[role];
+    if (!targetPasskey || typeof targetPasskey !== 'string') continue;
+    const targetDigest = sha256Buffer(targetPasskey);
     const isEqual = crypto.timingSafeEqual(candidateDigest, targetDigest);
     if (isEqual) {
       matchedRole = role;

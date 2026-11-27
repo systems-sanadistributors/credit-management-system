@@ -72,6 +72,7 @@ function validateEnv(envSource = process.env) {
       2: envSource.PERSON2_LOGIN,
       3: envSource.PERSON3_LOGIN,
       4: envSource.PERSON4_LOGIN,
+      5: envSource.VIEWER_LOGIN ? String(envSource.VIEWER_LOGIN).trim() : '',
     },
     smtp: {
       host: envSource.SMTP_HOST,

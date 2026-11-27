@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { config } = require('../config/env');
 
-const VALID_ROLES = new Set([1, 2, 3, 4]);
+const VALID_ROLES = new Set([1, 2, 3, 4, 5]);
 
 function requireAuth(req, res, next) {
   const token = req.cookies?.token;

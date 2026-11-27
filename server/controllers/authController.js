@@ -53,7 +53,7 @@ function getSession(req, res) {
       algorithms: ['HS256'],
     });
     const role = Number(decoded.role);
-    if (![1, 2, 3, 4].includes(role)) {
+    if (![1, 2, 3, 4, 5].includes(role)) {
       return res.status(200).json({ authenticated: false, role: null });
     }
     return res.status(200).json({ authenticated: true, role });

@@ -135,4 +135,27 @@ describe('Phase 1: Backend Setup, Env Validation, Security Middleware & Passkey 
       delete require.cache[require.resolve('../controllers/authController')];
     }
   });
+
+  it('authenticates the read-only Viewer passkey as role 5 and recognizes session', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ passkey: config.passkeys[5] });
+
+    assert.equal(loginRes.status, 200);
+    assert.equal(loginRes.body.role, 5);
+    const cookie = loginRes.headers['set-cookie'];
+
+    const sessionRes = await request(app)
+      .get('/api/auth/session')
+      .set('Cookie', cookie);
+    assert.equal(sessionRes.status, 200);
+    assert.equal(sessionRes.body.authenticated, true);
+    assert.equal(sessionRes.body.role, 5);
+
+    const meRes = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', cookie);
+    assert.equal(meRes.status, 200);
+    assert.equal(meRes.body.role, 5);
+  });
 });
