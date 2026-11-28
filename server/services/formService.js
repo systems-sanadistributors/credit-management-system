@@ -233,6 +233,15 @@ async function createForm(payload, files = {}) {
   return formObj;
 }
 
+function assertEditableBeforeP2Approval(form) {
+  if (Number(form.currentStage) > 2 || form.status === 'APPROVED') {
+    throw createHttpError(
+      403,
+      'Form is locked from editing or deleting once approved by Person 2'
+    );
+  }
+}
+
 async function updateForm(id, payload, files = {}) {
   assertValidObjectId(id);
   const validated = validateFormPayload(payload, files);
@@ -241,6 +250,7 @@ async function updateForm(id, payload, files = {}) {
   if (!form) {
     throw createHttpError(404, 'Form not found');
   }
+  assertEditableBeforeP2Approval(form);
 
   const data = await resolveR2Images(validated);
   Object.assign(form, data);
@@ -258,10 +268,13 @@ async function updateForm(id, payload, files = {}) {
 
 async function deleteForm(id) {
   assertValidObjectId(id);
-  const deleted = await Form.findByIdAndDelete(id).lean();
-  if (!deleted) {
+  const existing = await Form.findById(id).lean();
+  if (!existing) {
     throw createHttpError(404, 'Form not found');
   }
+  assertEditableBeforeP2Approval(existing);
+
+  const deleted = await Form.findByIdAndDelete(id).lean();
   realtimeService.broadcastEvent('form_deleted', { id: String(deleted._id) });
   await emailService.notifyOnFormDeleted(deleted);
   return deleted;

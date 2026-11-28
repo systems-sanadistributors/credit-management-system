@@ -190,24 +190,53 @@ export function FormRowList({
                 </button>
               )}
 
-              {role === 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onEditForm(form)}
-                    className="ledger-btn-secondary px-2.5 py-2 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.1em]"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDeleteForm(form)}
-                    className="ledger-btn-danger-soft px-2.5 py-2 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.1em]"
-                  >
-                    Delete
-                  </button>
-                </>
-              )}
+              {role === 1 && (() => {
+                const isLockedAfterP2 =
+                  Number(form.currentStage) > 2 || form.status === 'APPROVED';
+                return (
+                  <>
+                    {isLockedAfterP2 && (
+                      <button
+                        type="button"
+                        onClick={() => onInspectForm(form)}
+                        className="ledger-btn-secondary px-2.5 py-2 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.1em]"
+                      >
+                        Inspect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isLockedAfterP2}
+                      title={
+                        isLockedAfterP2
+                          ? 'Locked after Person 2 approval'
+                          : undefined
+                      }
+                      onClick={() => !isLockedAfterP2 && onEditForm(form)}
+                      className={`ledger-btn-secondary px-2.5 py-2 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                        isLockedAfterP2 ? 'opacity-40 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isLockedAfterP2}
+                      title={
+                        isLockedAfterP2
+                          ? 'Locked after Person 2 approval'
+                          : undefined
+                      }
+                      onClick={() => !isLockedAfterP2 && onDeleteForm(form)}
+                      className={`ledger-btn-danger-soft px-2.5 py-2 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                        isLockedAfterP2 ? 'opacity-40 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      Delete
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         );

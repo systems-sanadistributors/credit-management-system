@@ -62,18 +62,7 @@ describe('Phase 4 End-to-End: Complete 4-Person Sequential Approval & Edit-Reset
     assert.equal(createRes.body.form.currentStage, 2);
     assert.equal(createRes.body.form.status, 'INCOMPLETE');
 
-    // 2. Person 2 reviews and approves (Stage 2 -> 3)
-    const p2FirstReview = await request(app)
-      .post(`/api/forms/${formId}/review`)
-      .set('Cookie', p2Cookie)
-      .send({
-        action: 'APPROVE',
-        comment: 'Shop front picture verified.',
-      });
-    assert.equal(p2FirstReview.status, 200);
-    assert.equal(p2FirstReview.body.form.currentStage, 3);
-
-    // 3. Person 1 edits the form with Cheque status = Y -> resets to Stage 2, clears prior comments, sets isUpdated: true
+    // 2. Person 1 edits BEFORE Person 2 approves (Cheque status = Yes -> allowed at Stage 2)
     const p1Edit = await request(app)
       .put(`/api/forms/${formId}`)
       .set('Cookie', p1Cookie)
@@ -104,16 +93,39 @@ describe('Phase 4 End-to-End: Complete 4-Person Sequential Approval & Edit-Reset
     assert.equal(p1Edit.body.form.chequeStatus, 'Yes');
     assert.equal(p1Edit.body.form.chequeNo, 'CHQ-771234');
 
-    // 4. Person 2 approves updated form (Stage 2 -> 3)
-    const p2SecondReview = await request(app)
+    // 3. Person 2 approves form (Stage 2 -> 3) -> P1 edit/delete is now locked (403)
+    const p2Review = await request(app)
       .post(`/api/forms/${formId}/review`)
       .set('Cookie', p2Cookie)
       .send({
         action: 'APPROVE',
         comment: 'Person 2 verified security cheque image.',
       });
-    assert.equal(p2SecondReview.status, 200);
-    assert.equal(p2SecondReview.body.form.currentStage, 3);
+    assert.equal(p2Review.status, 200);
+    assert.equal(p2Review.body.form.currentStage, 3);
+
+    const p1LockedEdit = await request(app)
+      .put(`/api/forms/${formId}`)
+      .set('Cookie', p1Cookie)
+      .send({
+        cName: 'Usman Ali',
+        bName: 'Sana Key Accounts Hub',
+        shopPicture: SAMPLE_PNG_DATA_URL,
+        channel: 'Key accounts',
+        cnicNo: '42101-7654321-3',
+        mobileNo: '0321-9876543',
+        address: 'Suite 9, Shahrah-e-Faisal, Karachi',
+        days: '60',
+        creditLimit: 1500000,
+        chequeStatus: 'No',
+        creditType: 'Increment',
+      });
+    assert.equal(p1LockedEdit.status, 403);
+
+    const p1LockedDelete = await request(app)
+      .delete(`/api/forms/${formId}`)
+      .set('Cookie', p1Cookie);
+    assert.equal(p1LockedDelete.status, 403);
 
     // 5. Person 3 approves (Stage 3 -> 4)
     const p3Review = await request(app)

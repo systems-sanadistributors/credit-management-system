@@ -141,15 +141,27 @@ export function FormReviewPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {role === 1 && onEditTrigger && (
-            <button
-              type="button"
-              onClick={() => onEditTrigger(form)}
-              className="ledger-btn-primary px-3.5 py-1.5 font-mono-tabular text-xs font-semibold uppercase tracking-wider"
-            >
-              Edit Record
-            </button>
-          )}
+          {role === 1 && onEditTrigger && (() => {
+            const isLockedAfterP2 =
+              Number(form.currentStage) > 2 || form.status === 'APPROVED';
+            return (
+              <button
+                type="button"
+                disabled={isLockedAfterP2}
+                title={
+                  isLockedAfterP2
+                    ? 'Locked after Person 2 approval'
+                    : undefined
+                }
+                onClick={() => !isLockedAfterP2 && onEditTrigger(form)}
+                className={`ledger-btn-primary px-3.5 py-1.5 font-mono-tabular text-xs font-semibold uppercase tracking-wider ${
+                  isLockedAfterP2 ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
+              >
+                Edit Record
+              </button>
+            );
+          })()}
           <button
             type="button"
             onClick={onClose}

@@ -152,6 +152,8 @@ describe('Phase 3: Frontend Auth UI, Dashboard Stat Filters & 1-Per-Row Ledger L
     assert.match(p1Html, /Updated \/ Reset/);
     assert.match(p1Html, /Edit/);
     assert.match(p1Html, /Delete/);
+    assert.match(p1Html, /disabled=""[^>]*title="Locked after Person 2 approval"/);
+    assert.match(p1Html, /Inspect/);
 
     const p2Html = renderToStaticMarkup(
       React.createElement(FormRowList, {

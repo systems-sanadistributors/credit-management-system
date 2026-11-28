@@ -61,6 +61,9 @@ export function DashboardPage() {
   };
 
   const handleOpenEdit = (form) => {
+    if (!form || Number(form.currentStage) > 2 || form.status === 'APPROVED') {
+      return;
+    }
     setActionError('');
     setSelectedFormId(null);
     setBuilderState({ open: true, editingForm: form });

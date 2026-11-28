@@ -185,15 +185,7 @@ describe('Phase 2: Structured 12-Field Form CRUD, Conditional Cheque Validation,
       .send({ action: 'APPROVE', comment: 'Skipping Person 2' });
     assert.equal(p3Early.status, 403);
 
-    // Person 2 approves (Stage 2 -> 3)
-    const p2Approve = await request(app)
-      .post(`/api/forms/${formId}/review`)
-      .set('Cookie', cookieForRole(2))
-      .send({ action: 'APPROVE', comment: 'Shop picture and CNIC verified.' });
-    assert.equal(p2Approve.status, 200);
-    assert.equal(p2Approve.body.form.currentStage, 3);
-
-    // Person 1 edits the form -> resets to Stage 2, clears prior approvals, sets isUpdated: true
+    // Person 1 edits BEFORE Person 2 approves -> allowed at Stage 2, sets isUpdated: true
     const editRes = await request(app)
       .put(`/api/forms/${formId}`)
       .set('Cookie', cookieForRole(1))
@@ -217,12 +209,26 @@ describe('Phase 2: Structured 12-Field Form CRUD, Conditional Cheque Validation,
     assert.equal(editRes.body.form.comments.length, 0);
     assert.equal(editRes.body.form.creditLimit, 750000);
 
-    // Walk through Person 2 -> Person 3 -> Person 4
-    await request(app)
+    // Person 2 approves (Stage 2 -> 3) -> locks P1 edit & delete
+    const p2Approve = await request(app)
       .post(`/api/forms/${formId}/review`)
       .set('Cookie', cookieForRole(2))
       .send({ action: 'APPROVE', comment: 'Cheque CHQ-4410 verified.' });
+    assert.equal(p2Approve.status, 200);
+    assert.equal(p2Approve.body.form.currentStage, 3);
 
+    const lockedEditRes = await request(app)
+      .put(`/api/forms/${formId}`)
+      .set('Cookie', cookieForRole(1))
+      .send(buildValidPayload({ cName: 'Bilal Khan', bName: 'Khan Medicos' }));
+    assert.equal(lockedEditRes.status, 403);
+
+    const lockedDeleteRes = await request(app)
+      .delete(`/api/forms/${formId}`)
+      .set('Cookie', cookieForRole(1));
+    assert.equal(lockedDeleteRes.status, 403);
+
+    // Walk through Person 3 -> Person 4
     await request(app)
       .post(`/api/forms/${formId}/review`)
       .set('Cookie', cookieForRole(3))
