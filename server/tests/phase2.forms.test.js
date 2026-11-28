@@ -279,4 +279,103 @@ describe('Phase 2: Structured 12-Field Form CRUD, Conditional Cheque Validation,
       .set('Cookie', cookieForRole(1));
     assert.equal(delRes.status, 200);
   });
+
+  it('exports existing customer forms to Excel (.xlsx) with all fields, --- fallbacks, P1-P4 statuses, and embedded images', async () => {
+    const ExcelJS = require('exceljs');
+    const binaryParser = (res, callback) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => callback(null, Buffer.concat(chunks)));
+    };
+
+    const blankRes = await request(app)
+      .post('/api/forms')
+      .set('Cookie', cookieForRole(1))
+      .send(
+        buildValidPayload({
+          cName: 'Export Blank Check',
+          bName: 'Blank Check Store',
+          ntnNo: '',
+          chequeStatus: 'No',
+        })
+      );
+    assert.equal(blankRes.status, 201);
+    const blankId = blankRes.body.form._id;
+
+    try {
+      // Unauthenticated should return 401
+      const unauthRes = await request(app).get('/api/forms/export');
+      assert.equal(unauthRes.status, 401);
+
+      // Viewer (role 5) should be allowed to export existing forms
+      const exportRes = await request(app)
+        .get('/api/forms/export')
+        .set('Cookie', cookieForRole(5))
+        .buffer(true)
+        .parse(binaryParser);
+
+      assert.equal(exportRes.status, 200);
+      assert.match(
+        exportRes.headers['content-type'],
+        /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/
+      );
+      assert.ok(Buffer.isBuffer(exportRes.body) && exportRes.body.length > 0);
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(exportRes.body);
+      const sheet = workbook.getWorksheet('Customers Export');
+      assert.ok(sheet);
+
+      const headers = sheet.getRow(1).values.slice(1);
+      assert.ok(headers.includes('Customer Name'));
+      assert.ok(headers.includes('NTN #'));
+      assert.ok(headers.includes('Bank Name'));
+      assert.ok(headers.includes('Approval / Rejection'));
+      assert.ok(headers.includes('P1 Status'));
+      assert.ok(headers.includes('P2 Status'));
+      assert.ok(headers.includes('P3 Status'));
+      assert.ok(headers.includes('P4 Status'));
+      assert.ok(headers.includes('Shop Picture'));
+      assert.ok(headers.includes('Cheque Picture'));
+
+      let foundApprovedRow = false;
+      let foundBlankFallbackRow = false;
+      const cNameCol = headers.indexOf('Customer Name') + 1;
+      const ntnCol = headers.indexOf('NTN #') + 1;
+      const chequeNoCol = headers.indexOf('Cheque #') + 1;
+      const bankNameCol = headers.indexOf('Bank Name') + 1;
+      const bankBranchCol = headers.indexOf('Bank Branch') + 1;
+      const chequePicCol = headers.indexOf('Cheque Picture') + 1;
+      const approvalCol = headers.indexOf('Approval / Rejection') + 1;
+      const p1Col = headers.indexOf('P1 Status') + 1;
+      const p2Col = headers.indexOf('P2 Status') + 1;
+      const p4Col = headers.indexOf('P4 Status') + 1;
+
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        if (row.getCell(approvalCol).value === 'APPROVED') {
+          foundApprovedRow = true;
+          assert.equal(row.getCell(p1Col).value, 'Submitted (Updated / Reset)');
+          assert.match(String(row.getCell(p2Col).value), /^APPROVED:/);
+          assert.match(String(row.getCell(p4Col).value), /^APPROVED:/);
+          assert.equal(row.getCell(chequeNoCol).value, 'CHQ-4410');
+        }
+        if (row.getCell(cNameCol).value === 'Export Blank Check') {
+          foundBlankFallbackRow = true;
+          assert.equal(row.getCell(ntnCol).value, '---');
+          assert.equal(row.getCell(chequeNoCol).value, '---');
+          assert.equal(row.getCell(bankNameCol).value, '---');
+          assert.equal(row.getCell(bankBranchCol).value, '---');
+          assert.equal(row.getCell(chequePicCol).value, '---');
+          assert.equal(row.getCell(p1Col).value, 'Submitted');
+          assert.equal(row.getCell(p2Col).value, 'Pending Review');
+        }
+      });
+      assert.equal(foundApprovedRow, true);
+      assert.equal(foundBlankFallbackRow, true);
+      assert.ok(sheet.getImages().length > 0);
+    } finally {
+      await Form.findByIdAndDelete(blankId);
+    }
+  });
 });

@@ -1,5 +1,6 @@
 const formService = require('../services/formService');
 const realtimeService = require('../services/realtimeService');
+const exportService = require('../services/exportService');
 
 function streamForms(req, res) {
   return realtimeService.addClient(req, res);
@@ -72,10 +73,29 @@ async function sendCredit(req, res, next) {
   }
 }
 
+async function exportFormsExcel(_req, res, next) {
+  try {
+    const buffer = await exportService.generateCustomersExcelExport();
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="sana-customers-export-${dateStamp}.xlsx"`
+    );
+    return res.status(200).send(buffer);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   streamForms,
   getForms,
   getFormById,
+  exportFormsExcel,
   createForm,
   updateForm,
   deleteForm,

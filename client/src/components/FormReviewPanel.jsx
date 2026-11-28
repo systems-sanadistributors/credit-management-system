@@ -155,7 +155,7 @@ export function FormReviewPanel({
             onClick={onClose}
             className="ledger-btn-secondary px-3.5 py-1.5 font-mono-tabular text-xs uppercase tracking-wider"
           >
-            Back to Ledger
+            Go Back
           </button>
         </div>
       </div>

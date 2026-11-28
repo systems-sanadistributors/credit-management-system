@@ -14,6 +14,12 @@ router.get(
   formController.streamForms
 );
 router.get(
+  '/export',
+  requireAuth,
+  requireRole(1, 2, 3, 4, 5),
+  formController.exportFormsExcel
+);
+router.get(
   '/:id',
   requireAuth,
   requireRole(1, 2, 3, 4, 5),

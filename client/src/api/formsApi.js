@@ -1,4 +1,6 @@
-import { apiRequest } from './client.js';
+import { API_BASE, apiRequest } from './client.js';
+
+export const EXPORT_FORMS_URL = `${API_BASE}/forms/export`;
 
 export function fetchForms() {
   return apiRequest('/forms', { method: 'GET' });

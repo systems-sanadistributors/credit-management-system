@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useForms } from '../hooks/useForms.js';
 import {
+  EXPORT_FORMS_URL,
   createForm,
   updateForm,
   deleteForm,
@@ -144,17 +145,27 @@ export function DashboardPage() {
             <p className="font-mono-tabular text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em] text-zinc-500">
               Sana Distributors / Approval Credit Management System
             </p>
-            <h1 className="mt-2 font-display text-[32px] sm:text-[42px] lg:text-[58px] font-bold leading-[0.95] sm:leading-[0.88] tracking-[-0.05em] sm:tracking-[-0.055em] max-w-full">
+            <h1 className="mt-2 font-display text-[32px] sm:text-[42px] lg:text-[58px] font-bold leading-[0.95] sm:leading-[0.88] tracking-tighter sm:tracking-[-0.055em] max-w-full">
               Credit Management System<span className="text-zinc-400">.</span>
             </h1>
           </div>
-          <p className="font-mono-tabular text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 text-left sm:text-right shrink-0 leading-relaxed">
-            {role === 5 ? 'Viewer' : `P${role}`}
-            <br />
-            <span className="text-zinc-950">
-              {filteredForms.length} / {forms.length}
-            </span>
-          </p>
+          <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+            <p className="font-mono-tabular text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 text-left sm:text-right leading-relaxed">
+              {role === 5 ? 'Viewer' : `P${role}`}
+              <br />
+              <span className="text-zinc-950">
+                {filteredForms.length} / {forms.length}
+              </span>
+            </p>
+            <a
+              href={EXPORT_FORMS_URL}
+              download="sana-customers-export.xlsx"
+              aria-label="Export Excel"
+              className="bg-green-500 hover:bg-green-600 text-white inline-flex items-center px-3 py-1.5 font-mono-tabular text-[10px] font-semibold uppercase tracking-[0.12em] no-underline rounded transition-colors"
+            >
+              Export Excel
+            </a>
+          </div>
         </section>
 
         <div
@@ -171,11 +182,10 @@ export function DashboardPage() {
         {syncBanner && (
           <div
             role={syncBanner.type === 'error' ? 'alert' : 'status'}
-            className={`mb-3 border px-4 py-3 text-xs font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${
-              syncBanner.type === 'error'
-                ? 'border-rose-500 bg-rose-50 text-rose-900'
-                : 'border-emerald-500 bg-emerald-50 text-emerald-900'
-            }`}
+            className={`mb-3 border px-4 py-3 text-xs font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 ${syncBanner.type === 'error'
+              ? 'border-rose-500 bg-rose-50 text-rose-900'
+              : 'border-emerald-500 bg-emerald-50 text-emerald-900'
+              }`}
           >
             <span>{syncBanner.text}</span>
             <button
